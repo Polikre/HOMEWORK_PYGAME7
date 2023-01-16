@@ -134,21 +134,24 @@ def generate_level(level):
     return new_player, x, y
 
 
-map_level = load_level('map.txt')
-start_screen()
-player, level_x, level_y = generate_level(load_level('map.txt'))
-for i in load_level("map.txt"):
-    print(i)
-
-while running:
-    for event in p.event.get():
-        if event.type == p.QUIT:
-            running = False
-        key = p.key.get_pressed()
-        player.update_(key)
-    screen.fill((255, 255, 255))
-    all_sprites.update()
-    all_sprites.draw(screen)
-    clock.tick(FPS)
-    p.display.flip()
-p.quit()
+text = input("Название уровня\n")
+try:
+    map_level = load_level(text)
+    start_screen()
+    player, level_x, level_y = generate_level(load_level(text))
+    for i in load_level("map.txt"):
+        print(i)
+    while running:
+        for event in p.event.get():
+            if event.type == p.QUIT:
+                running = False
+            key = p.key.get_pressed()
+            player.update_(key)
+        screen.fill((255, 255, 255))
+        all_sprites.update()
+        all_sprites.draw(screen)
+        clock.tick(FPS)
+        p.display.flip()
+    p.quit()
+except FileNotFoundError:
+    print("Такого файла не существует")
