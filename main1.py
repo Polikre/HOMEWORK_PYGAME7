@@ -8,6 +8,9 @@ FPS = 10
 WIDTH = 550
 HEIGHT = 550
 gravity = 0.25
+SIZE_W = 10
+SIZE_H = 10
+
 
 p.init()
 screen = p.display.set_mode((WIDTH, HEIGHT))
@@ -17,6 +20,7 @@ player = None
 all_sprites = p.sprite.Group()
 tiles_group = p.sprite.Group()
 player_group = p.sprite.Group()
+boxes_group = p.sprite.Group()
 
 
 def load_image(name, colorkey=None):
@@ -82,6 +86,34 @@ player_image = load_image('mar.png')
 tile_width = tile_height = 50
 
 
+class Camera:
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    def update_(self, event):
+        if event.key == p.K_LEFT:
+            self.dx = tile_width
+            self.dy = 0
+        if event.key == p.K_RIGHT:
+            self.dx = -tile_width
+            self.dy = 0
+        elif event.key == p.K_UP:
+            self.dy = tile_height
+            self.dx = 0
+        elif event.key == p.K_DOWN:
+            self.dy = -tile_height
+            self.dx = 0
+
+    def concern(self, obj):
+        obj.rect.x -= self.dx
+        obj.rect.y -= self.dy
+
+
 class Tile(p.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
@@ -90,32 +122,22 @@ class Tile(p.sprite.Sprite):
             tile_width * pos_x, tile_height * pos_y)
 
 
+class Boxes(p.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(boxes_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+
+
 class Player(p.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
+        super().__init__(player_group)
         self.image = player_image
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+        self.x12 = pos_x
+        self.y12 = pos_y
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
-
-    def update_(self, key):
-        min_x, min_y, max_x, max_y = 0, 0, len(map_level[0]), len(map_level)
-        tmp_x = self.pos_x
-        tmp_y = self.pos_y
-        if key[p.K_DOWN] and self.pos_y + 1 < max_y:
-            self.pos_y += 1
-        elif key[p.K_UP] and self.pos_y - 1 >= min_y:
-            self.pos_y -= 1
-        elif key[p.K_LEFT] and self.pos_x - 1 >= min_x:
-            self.pos_x -= 1
-        elif key[p.K_RIGHT] and self.pos_x + 1 < max_x:
-            self.pos_x += 1
-        if map_level[self.pos_y][self.pos_x] == "#":
-            self.pos_x = tmp_x
-            self.pos_y = tmp_y
-        self.rect = self.image.get_rect().move(
-            tile_width * self.pos_x + 15, tile_height * self.pos_y + 5)
 
 
 def generate_level(level):
@@ -126,30 +148,52 @@ def generate_level(level):
             if level[y][x] == '.':
                 Tile('empty', x, y)
             elif level[y][x] == '#':
-                Tile('wall', x, y)
+                Boxes('wall', x, y)
             elif level[y][x] == '@':
                 zn = (x, y)
-    Tile('empty', zn[0], zn[1])
-    new_player = Player(zn[0], zn[1])
+                Tile('empty', zn[0], zn[1])
+                new_player = Player(zn[0], zn[1])
     return new_player, x, y
 
 
-text = input("Название уровня\n")
+text = "map.txt"
 try:
     map_level = load_level(text)
+    SIZE_W = len(map_level[0])
+    SIZE_H = len(map_level)
     start_screen()
     player, level_x, level_y = generate_level(load_level(text))
-    for i in load_level("map.txt"):
-        print(i)
+    camera = Camera()
     while running:
         for event in p.event.get():
             if event.type == p.QUIT:
                 running = False
-            key = p.key.get_pressed()
-            player.update_(key)
+            if event.type == p.KEYDOWN:
+                camera.update_(event)
+                x = 0
+                y = 0
+                if event.key == p.K_LEFT:
+                    x = -1
+                    y = 0
+                if event.key == p.K_RIGHT:
+                    x = 1
+                    y = 0
+                elif event.key == p.K_UP:
+                    x = 0
+                    y = -1
+                elif event.key == p.K_DOWN:
+                    x = 0
+                    y = 1
+                for sprite in all_sprites:
+                    camera.apply(sprite)
+                if p.sprite.spritecollideany(player, boxes_group):
+                    for sprite in all_sprites:
+                        camera.concern(sprite)
         screen.fill((255, 255, 255))
         all_sprites.update()
+        player_group.update()
         all_sprites.draw(screen)
+        player_group.draw(screen)
         clock.tick(FPS)
         p.display.flip()
     p.quit()
